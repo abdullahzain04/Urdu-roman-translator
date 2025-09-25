@@ -1,11 +1,59 @@
+import subprocess
+import sys
+import os
+from pathlib import Path
+
+# --- DEPENDENCY INSTALLATION FUNCTION ---
+def install_dependencies():
+    """Automatically install required dependencies if not present."""
+    required_packages = {
+        'streamlit': 'streamlit',
+        'torch': 'torch',
+        'sentencepiece': 'sentencepiece', 
+        'gdown': 'gdown',
+        'requests': 'requests'
+    }
+    
+    missing_packages = []
+    
+    # Check which packages are missing
+    for package_name, pip_name in required_packages.items():
+        try:
+            __import__(package_name)
+        except ImportError:
+            missing_packages.append(pip_name)
+    
+    # Install missing packages
+    if missing_packages:
+        print("🔄 Installing missing dependencies...")
+        print(f"Missing packages: {', '.join(missing_packages)}")
+        
+        for package in missing_packages:
+            try:
+                print(f"📦 Installing {package}...")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+                print(f"✅ Successfully installed {package}")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Failed to install {package}: {e}")
+                print("Please install manually using: pip install " + package)
+                sys.exit(1)
+        
+        print("✅ All dependencies installed successfully!")
+        print("🔄 Please restart the application for changes to take effect.")
+        sys.exit(0)
+    else:
+        print("✅ All required dependencies are already installed.")
+
+# Install dependencies first
+install_dependencies()
+
+# Now import the required packages
 import streamlit as st
 import torch
 import sentencepiece as spm
 import torch.nn as nn
 import re
-import os
 import requests
-from pathlib import Path
 import gdown
 
 # --- CONFIG (match training) ---
@@ -762,6 +810,38 @@ def create_footer():
     </div>
     """, unsafe_allow_html=True)
 
+def check_and_install_streamlit_dependencies():
+    """Check and install dependencies with Streamlit feedback."""
+    required_packages = ['torch', 'sentencepiece', 'gdown']
+    missing_packages = []
+    
+    # Check which packages are missing
+    for package in required_packages:
+        try:
+            __import__(package)
+        except ImportError:
+            missing_packages.append(package)
+    
+    if missing_packages:
+        st.warning(f"🔄 Installing missing dependencies: {', '.join(missing_packages)}")
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for i, package in enumerate(missing_packages):
+            status_text.text(f"Installing {package}...")
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package], 
+                                    capture_output=True, text=True)
+                progress_bar.progress((i + 1) / len(missing_packages))
+                st.success(f"✅ {package} installed successfully")
+            except subprocess.CalledProcessError as e:
+                st.error(f"❌ Failed to install {package}. Please install manually: pip install {package}")
+                st.stop()
+        
+        st.success("✅ All dependencies installed! Please refresh the page.")
+        st.stop()
+
 def main():
     # Page configuration
     st.set_page_config(
@@ -770,6 +850,9 @@ def main():
         layout="wide",
         initial_sidebar_state="collapsed"
     )
+    
+    # Check and install dependencies if needed
+    check_and_install_streamlit_dependencies()
     
     # Add custom CSS
     add_custom_css()
